@@ -1,0 +1,15 @@
+{
+    "name": "KnowContest",
+    "description": "Discover, Prepare, Compete",
+    "version": "0.0.1",
+    "manifest_version": 2,
+    "browser_action": {
+      "default_popup": "index.html",
+      "default_icon": "knowContestLogo/128x128-logo.png"
+    },
+    "icons": {
+      "128": "knowContestLogo/128x128-logo.png",
+      "48": "knowContestLogo/48x48-logo.png",
+      "16": "knowContestLogo/16x16-logo.png"
+    }
+  }
