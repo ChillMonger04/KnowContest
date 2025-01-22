@@ -1,7 +1,7 @@
-const toggleButton = document.getElementById(`toggle`);
-const sidebar = document.getElementById(`sidebar`);
-const mainContent = document.getElementById(`rest`);
-const tableContent = document.getElementById(`tableContent`);
+const toggleButton = document.getElementById("toggle");
+const sidebar = document.getElementById("sidebar");
+const mainContent = document.getElementById("rest");
+const tableContent = document.getElementById("tableContent");
 const checkboxElements = document.querySelectorAll("input[type='checkbox']");
 const radioElements = document.querySelectorAll("input[type='radio']");
 
@@ -27,226 +27,178 @@ toggleButton.addEventListener("click", function (e) {
   }
 });
 
-var selectedHosts;
+// The encoded list of all possible hosts
+const hostsQueryString = `codechef.com%2Ccodeforces.com%2Cgeeksforgeeks.org%2Chackerearth.com%2Cleetcode.com%2Ctopcoder.com%2Catcoder.jp%2Ccodingcompetitions.withgoogle.com`;
+
+const allHosts = decodeURIComponent(hostsQueryString).split(",");
+
+let selectedHosts;
+// If localStorage doesn't have "selectedHosts", default to codechef, codeforces, leetcode
 if (localStorage.getItem("selectedHosts") === null) {
-  selectedHosts = [`codechef.com`, `codeforces.com`];
-  document.getElementById("btncheck2").checked = true;
-  document.getElementById("btncheck1").checked = true;
+  selectedHosts = ["codechef.com", "codeforces.com", "leetcode.com"];
+  // Mark them checked by default (assuming the HTML has those checkboxes)
+  document.getElementsByName("codechef.com")[0].checked = true;
+  document.getElementsByName("codeforces.com")[0].checked = true;
 } else {
-  selectedHosts = JSON.parse(localStorage.getItem("selectedHosts"));
+  // Otherwise load from localStorage
+  selectedHosts = JSON.parse(localStorage.getItem("selectedHosts")) || [];
+  // Mark the existing selected ones as checked
   selectedHosts.forEach(function (name) {
-    document.getElementsByName(`${name}`)[0].checked = true;
+    const cb = document.getElementsByName(name)[0];
+    if (cb) {
+      cb.checked = true;
+    }
   });
 }
-var hostsQueryString = `codechef.com%2Ccodeforces.com%2Cgeeksforgeeks.org%2Chackerearth.com%2Cleetcode.com%2Ctopcoder.com%2Catcoder.jp%2Ccodingcompetitions.withgoogle.com`;
 
-var currentDate = new Date();
+// Set up date/time logic
+const currentDate = new Date();
 const currentDateTime =
   currentDate.toISOString().substring(0, 11) +
   currentDate.toISOString().substring(11, 19);
 
-var filterToday = false;
-var todayStartTime = new Date();
-todayStartTime.setDate(todayStartTime.getDate() - 32);
-todayStartTime.setHours(0o0, 0o0, 0o0);
+let filterToday = false;
 
-var todayStartDateTime =
+let todayStartTime = new Date();
+todayStartTime.setDate(todayStartTime.getDate() - 32);
+todayStartTime.setHours(0, 0, 0);
+
+let todayStartDateTime =
   todayStartTime.toISOString().substring(0, 11) +
   todayStartTime.toISOString().substring(11, 19);
-var tomorrowDate = new Date();
+
+let tomorrowDate = new Date();
 tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-const apiUrl = `https://clist.by:443/api/v4/contest/?username=jasjeet04mann&api_key=e5220e81c77c6e0466da36498243d35be58eb346&order_by=start`;
 
-var apiResponseData;
+const apiUrl = `https://clist.by:443/api/v4/contest/?username=jasjeet04mann&api_key=e5220e81c77c6e0466da36498243d35be58eb346&format=json&order_by=start`;
 
+let apiResponseData;
+
+// Displays the contests based on filterToday + selectedHosts
 function displayContests() {
-  var innerHtml = ``;
+  let innerHtml = ``;
 
-  apiResponseData.data.objects.forEach(function (contest) {
-    var contestStartTime = new Date(contest.start + `.000Z`);
-    var contestEndTime = new Date(contest.end + `.000Z`);
+  apiResponseData.objects.forEach(function (contest) {
+    const contestStartTime = new Date(contest.start + `.000Z`);
+    const contestEndTime = new Date(contest.end + `.000Z`);
+
     if (filterToday) {
-      if (
-        selectedHosts.includes(contest.resource) &&
-        contestEndTime > currentDate &&
-        contestStartTime < tomorrowDate
-      ) {
-        const minutes = (parseInt(contest.duration) / 60) % 60;
-        const hours = parseInt((parseInt(contest.duration) / 3600) % 24);
-        const days = parseInt(parseInt(contest.duration) / 3600 / 24);
-        var durationString = ``
-        ;
-        if (days > 0) {
-          durationString += `${days} days `;
-        }
-        if (hours > 0) {
-          durationString += `${hours} hours `;
-        }
-        if (minutes > 0) {
-          durationString += `${minutes} minutes `;
-        }
-        var startTime = new Date(contest.start + `.000Z`);
-        startTime = startTime.toLocaleString("en-US");
-        const timeParts = startTime.split(", ");
-        const dateParts = timeParts[0].split("/");
-        var contestHtml = `
-					<a class="contest btn btn-lg btn-light mx-4 my-3" href="${
-            contest.href
-          }" target="_blank">
-						<div class="left">
-							<span><strong>${contest.event}</strong></span>
-							<span>Contest Date: ${dateParts[1]}/${dateParts[0]}/${dateParts[2]}</span>
-							<span>Start Time: ${timeParts[1]}</span>
-							<span>Duration: ${durationString}</span>
-						</div>
-						<div class="right">
-							<img class="logo" src="images/${contestLogos.get(
-                contest.resource
-              )}" alt="codechef">
-						</div>
-					</a>
-					
-				`;
+      // "Today" means it ends after now AND starts before tomorrow
+      if (contestEndTime > currentDate && contestStartTime < tomorrowDate) {
+        // Still show only if user wants that host
+        if (!selectedHosts.includes(contest.resource)) return;
 
-        innerHtml += contestHtml;
+        innerHtml += buildContestHtml(contest);
       }
     } else {
-      if (
-        selectedHosts.includes(contest.resource) &&
-        contestStartTime > currentDate
-      ) {
-        const minutes = (parseInt(contest.duration) / 60) % 60;
-        const hours = parseInt((parseInt(contest.duration) / 3600) % 24);
-        const days = parseInt(parseInt(contest.duration) / 3600 / 24);
-        var durationString = ``;
-        if (days > 0) {
-          durationString += `${days} days `;
-        }
-        if (hours > 0) {
-          durationString += `${hours} hours `;
-        }
-        if (minutes > 0) {
-          durationString += `${minutes} minutes `;
-        }
-        var startTime = new Date(contest.start + `.000Z`);
-        startTime = startTime.toLocaleString("en-US");
-        const timeParts = startTime.split(", ");
-        const dateParts = timeParts[0].split("/");
-        var contestHtml = `
-					<a class="contest btn btn-lg btn-light mx-4 my-3" href="${
-            contest.href
-          }" target="_blank">
-						<div class="left">
-							<span><strong>${contest.event}</strong></span>
-							<span>Contest Date: ${dateParts[1]}/${dateParts[0]}/${dateParts[2]}</span>
-							<span>Start time: ${timeParts[1]}</span>
-							<span>Duration: ${durationString}</span>
-						</div>
-						<div class="right">
-							<img class="logo" src="images/${contestLogos.get(
-                contest.resource
-              )}" alt="codechef">
-						</div>
-					</a>
-					
-				`;
+      // "Upcoming" means startTime > now
+      if (contestStartTime > currentDate) {
+        // Still show only if user wants that host
+        if (!selectedHosts.includes(contest.resource)) return;
 
-        innerHtml += contestHtml;
+        innerHtml += buildContestHtml(contest);
       }
     }
   });
+
   tableContent.innerHTML = innerHtml;
   if (innerHtml === ``) {
     tableContent.innerHTML = `
-			<p id="load2">Nothing left in our stack</p>
-			<p id="load3">Try again, or come back!</p>
-		`;
+  <p id="load2">Nothing left in our stack</p>
+  <p id="load3">Try again, or come back!</p>
+`;
   }
   toggleButton.disabled = false;
 }
 
+function buildContestHtml(contest) {
+  const minutes = (parseInt(contest.duration) / 60) % 60;
+  const hours = parseInt((parseInt(contest.duration) / 3600) % 24);
+  const days = parseInt(parseInt(contest.duration) / 3600 / 24);
+
+  let durationString = ``;
+  if (days > 0) durationString += `${days} days `;
+  if (hours > 0) durationString += `${hours} hours `;
+  if (minutes > 0) durationString += `${minutes} minutes `;
+
+  let startTime = new Date(contest.start + `.000Z`);
+  startTime = startTime.toLocaleString("en-US");
+  const timeParts = startTime.split(", ");
+  const dateParts = timeParts[0].split("/");
+
+  return `
+<a class="contest btn btn-lg btn-light mx-4 my-3" href="${
+    contest.href
+  }" target="_blank">
+  <div class="left">
+    <span><strong>${contest.event}</strong></span>
+    <span>Contest Date: ${dateParts[1]}/${dateParts[0]}/${dateParts[2]}</span>
+    <span>Start Time: ${timeParts[1]}</span>
+    <span>Duration: ${durationString}</span>
+  </div>
+  <div class="right">
+    <img class="logo" src="images/${
+      contestLogos.get(contest.resource) || "default.png"
+    }" alt="${contest.resource}">
+  </div>
+</a>
+`;
+}
+
+// Fetch data from the API with date filters
 async function fetchDataFromAPI() {
-  //   try {
-  //     const response = await fetch(
-  //       apiUrl +
-  //         `&resource=${hostsQueryString}&end__gt=${currentDateTime}&start__gt=${todayStartDateTime}`
-  //     );
-  //     const data = await response.json();
-
-  //     return {
-  //       data,
-  //     };
-  //   } catch {
-  //     const response = await fetch(
-  //       apiUrl +
-  //         `&resource=${hostsQueryString}&end__gt=${currentDateTime}&start__gt=${todayStartDateTime}`
-  //     );
-  //     const data = await response.json();
-
-  //     return {
-  //       data,
-  //     };
-  //   }
   const response = await fetch(
-    apiUrl +
-      `&resource=${hostsQueryString}&end__gt=${currentDateTime}&start__gt=${todayStartDateTime}`
+    apiUrl + `&end__gt=${currentDateTime}&start__gt=${todayStartDateTime}`
   );
   const data = await response.json();
-
-  return {
-    data,
-  };
+  return data;
 }
 
 function setupEventListeners() {
-  for (var i = 0; i < checkboxElements.length; i++) {
-    checkboxElements[i].addEventListener("click", function (e) {
+  // For each checkbox, if user checks it => add to selectedHosts
+  // if user unchecks => remove from selectedHosts
+  checkboxElements.forEach((elem) => {
+    elem.addEventListener("click", function (e) {
+      const hostName = e.target.name;
       if (e.target.checked) {
-        if (!selectedHosts.includes(e.target.name)) {
-          selectedHosts.push(e.target.name);
+        if (!selectedHosts.includes(hostName)) {
+          selectedHosts.push(hostName);
         }
       } else {
-        const index = selectedHosts.indexOf(e.target.name);
+        const index = selectedHosts.indexOf(hostName);
         if (index > -1) {
           selectedHosts.splice(index, 1);
         }
       }
-      displayContests();
       localStorage.setItem("selectedHosts", JSON.stringify(selectedHosts));
+      displayContests();
     });
-  }
+  });
 
-  for (var i = 0; i < radioElements.length; i++) {
-    radioElements[i].addEventListener("click", function (e) {
+  // Radio buttons for "today" or "upcoming"
+  radioElements.forEach((elem) => {
+    elem.addEventListener("click", function (e) {
       if (e.target.id === "btncheck9") {
         filterToday = true;
-        displayContests();
       } else {
         filterToday = false;
-        displayContests();
       }
+      displayContests();
     });
-  }
-}
-
-var todayStartTime = new Date();
-todayStartTime.setHours(0o0, 0o0, 0o0);
-
-const savedTimeStamp = new Date(localStorage.getItem("timeStamp"));
-if (
-  localStorage.getItem("contestsData") === null ||
-  savedTimeStamp < todayStartTime
-) {
-  fetchDataFromAPI().then((data) => {
-    apiResponseData = data;
-    const timeStamp = new Date();
-    localStorage.setItem("contestsData", JSON.stringify(data));
-    localStorage.setItem("timeStamp", timeStamp);
-    displayContests();
-    setupEventListeners();
   });
-} else {
-  setupEventListeners();
-  apiResponseData = JSON.parse(localStorage.getItem("contestsData"));
-  displayContests();
+
+  // By default, we might mark the "upcoming" radio as checked
+  // or do nothing if you want no default radio chosen
+  document.getElementById("btncheck10").checked = true; // let's default to upcoming
 }
+
+// Force fresh fetch for demo
+fetchDataFromAPI().then((data) => {
+  apiResponseData = data;
+  const timeStamp = new Date();
+  localStorage.setItem("contestsData", JSON.stringify(data));
+  localStorage.setItem("timeStamp", timeStamp);
+
+  displayContests();
+  setupEventListeners();
+});
