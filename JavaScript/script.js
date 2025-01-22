@@ -35,7 +35,7 @@ const allHosts = decodeURIComponent(hostsQueryString).split(",");
 let selectedHosts;
 // If localStorage doesn't have "selectedHosts", default to codechef, codeforces, leetcode
 if (localStorage.getItem("selectedHosts") === null) {
-  selectedHosts = ["codechef.com", "codeforces.com", "leetcode.com"];
+  selectedHosts = ["codechef.com", "codeforces.com"];
   // Mark them checked by default (assuming the HTML has those checkboxes)
   document.getElementsByName("codechef.com")[0].checked = true;
   document.getElementsByName("codeforces.com")[0].checked = true;
